@@ -1,0 +1,3 @@
+[submodule "extra-vapi"]
+	path = extra-vapi
+	url = https://github.com/nemequ/vala-extra-vapis.git

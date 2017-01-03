@@ -93,7 +93,31 @@ AX_CHECK_COMPILE_FLAG([-std=gnu11],
 dnl ***********************************************************************
 dnl Check for required packages
 dnl ***********************************************************************
-PKG_CHECK_MODULES(SCREENREC, [gio-2.0 >= 2.42 gtk+-3.0 >= 3.20])
+PKG_CHECK_MODULES(SCREENREC, [
+	gio-2.0 >= 2.42
+	gtk+-3.0 >= 3.20
+	json-glib-1.0 >= 1.2
+	uuid >= 1.6
+
+	gstreamer-1.0 >= 1.10
+	gstreamer-base-1.0 >= 1.10
+	gstreamer-bad-base-1.0 >= 1.10
+	gstreamer-plugins-base-1.0 >= 1.10
+	gstreamer-plugins-bad-1.0 >= 1.10
+	gstreamer-audio-1.0 >= 1.10
+	gstreamer-bad-audio-1.0 >= 1.10
+	gstreamer-video-1.0 >= 1.10
+	gstreamer-bad-video-1.0 >= 1.10
+	gstreamer-gl-1.0 >= 1.10
+	gstreamer-player-1.0 >= 1.10
+
+	gstreamer-net-1.0 >= 1.10
+	gstreamer-rtp-1.0 >= 1.10
+	gstreamer-rtsp-1.0 >= 1.10
+
+	gstreamer-codecparsers-1.0 >= 1.10
+	gstreamer-mpegts-1.0 >= 1.10
+])
 
 
 dnl ***********************************************************************
