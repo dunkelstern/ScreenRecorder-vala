@@ -1,4 +1,5 @@
 using Gtk;
+using ScreenRec;
 
 namespace ScreenRec {
 
@@ -61,7 +62,10 @@ namespace ScreenRec {
         }
 
         private void build_source_buttons() {
-
+            var config = ConfigFile.instance();
+            foreach(var button in config.buttons) {
+                stdout.printf("Adding button %s of type %s\n", button.title, button.button_type.to_string());
+            }
         }
     }
 }

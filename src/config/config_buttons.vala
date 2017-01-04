@@ -1,5 +1,6 @@
 using Json;
 using Gdk;
+using ScreenRec;
 
 namespace ScreenRec {
 
@@ -10,7 +11,7 @@ namespace ScreenRec {
         VIDEO_PLAYER
     }
 
-    interface ButtonConfig : GLib.Object, Config {
+    interface ButtonConfig : Config {
         public abstract ButtonType button_type { get; }
         public abstract string title { get; set; }
         public abstract string id { get; set; }
@@ -32,15 +33,37 @@ namespace ScreenRec {
             }
         }
 
-        public static ButtonConfig deserialize(Json.Node node) {
-            ButtonType type = ButtonType.VIDEO_PLAYER; // TODO: read from json node
+        public static ButtonConfig? deserialize(Json.Object object) {
+            var type_string = object.get_string_member("button_type");
+            ButtonType type;
+            switch (type_string) {
+                case "v4l2":
+                    type = ButtonType.VIDEO4LINUX;
+                    break;
+                case "rtmp":
+                    type = ButtonType.RTMP_STREAM;
+                    break;
+                case "mjpeg":
+                    type = ButtonType.MJPEG_PIPE;
+                    break;
+                case "player":
+                    type = ButtonType.VIDEO_PLAYER;
+                    break;
+                default:
+                    return null;
+            }
             ButtonConfig result = ButtonConfigFactory.make_button_of_type(type);
-            result.deserialize(node);
+            try {
+                result.deserialize(object);
+            } catch (Error e) {
+                stderr.printf("Could not parse button config: %s\n", e.message);
+                return null;
+            }
             return result;
         }
     }
 
-    class V4l2ButtonConfig : GLib.Object, ButtonConfig, Config {
+    class V4l2ButtonConfig : GLib.Object, Config, ButtonConfig {
         public ButtonType button_type { get { return ButtonType.VIDEO4LINUX; } }
         private string _title;
         public string title {
@@ -55,15 +78,15 @@ namespace ScreenRec {
 
         public string device;
         public string format;
-        public int width;
-        public int height;
-        public int framerate;
+        public int64 width;
+        public int64 height;
+        public int64 framerate;
         public string hwaccel;
 
         public V4l2ButtonConfig() {
             this.title = "V4L2 Source";
-            uint8 raw_id[16] = {0};
-            char[] textual_id = {};
+            var raw_id = new uint8[16];
+            var textual_id = new char[36];
             UUID.generate_random(raw_id);
             UUID.unparse(raw_id, textual_id);
             this.id = (string)textual_id;
@@ -75,16 +98,37 @@ namespace ScreenRec {
             this.hwaccel = "opengl"; // TODO: make dynamic query
         }
 
-        public void serialize() {
-
+        public Json.Object serialize() {
+            var object = new Json.Object();
+            object.set_string_member("id", this.id);
+            object.set_string_member("title", this.title);
+            object.set_string_member("button_type", "v4l2");
+            object.set_string_member("device", this.device);
+            object.set_string_member("format", this.format);
+            object.set_int_member("width", this.width);
+            object.set_int_member("height", this.height);
+            object.set_int_member("framerate", this.framerate);
+            object.set_string_member("hwaccel", this.hwaccel);
+            return object;
         }
 
-        public void deserialize(Json.Node json) {
-
+        public void deserialize(Json.Object object) throws ConfigParseError {
+            var type = object.get_string_member("button_type");
+            if (type != "v4l2") {
+                throw new ConfigParseError.WRONG_TYPE("Wrong config type");
+            }
+            this.id = object.get_string_member("id");
+            this.title = object.get_string_member("title");
+            this.device = object.get_string_member("device");
+            this.format = object.get_string_member("format");
+            this.width = object.get_int_member("width");
+            this.height = object.get_int_member("height");
+            this.framerate = object.get_int_member("framerate");
+            this.hwaccel = object.get_string_member("hwaccel");
         }
     }
 
-    class RtmpButtonConfig : GLib.Object, ButtonConfig, Config {
+    class RtmpButtonConfig : GLib.Object, Config, ButtonConfig {
         public ButtonType button_type { get { return ButtonType.RTMP_STREAM; } }
         private string _title;
         public string title {
@@ -98,14 +142,14 @@ namespace ScreenRec {
         }
 
         public string url;
-        public int max_width;
-        public int max_height;
+        public int64 max_width;
+        public int64 max_height;
         public string hwaccel;
 
         public RtmpButtonConfig() {
             this.title = "RTMP Stream Source";
-            uint8 raw_id[16] = {0};
-            char[] textual_id = {};
+            var raw_id = new uint8[16];
+            var textual_id = new char[36];
             UUID.generate_random(raw_id);
             UUID.unparse(raw_id, textual_id);
             this.id = (string)textual_id;
@@ -115,16 +159,33 @@ namespace ScreenRec {
             this.hwaccel = "opengl"; // TODO: make dynamic query
         }
 
-        public void serialize() {
-
+        public Json.Object serialize() {
+            var object = new Json.Object();
+            object.set_string_member("id", this.id);
+            object.set_string_member("title", this.title);
+            object.set_string_member("button_type", "rtmp");
+            object.set_string_member("url", this.url);
+            object.set_int_member("max_width", this.max_width);
+            object.set_int_member("max_height", this.max_height);
+            object.set_string_member("hwaccel", this.hwaccel);
+            return object;
         }
 
-        public void deserialize(Json.Node json) {
-
+        public void deserialize(Json.Object object) throws ConfigParseError {
+            var type = object.get_string_member("button_type");
+            if (type != "rtmp") {
+                throw new ConfigParseError.WRONG_TYPE("Wrong config type");
+            }
+            this.id = object.get_string_member("id");
+            this.title = object.get_string_member("title");
+            this.url = object.get_string_member("url");
+            this.max_width = object.get_int_member("max_width");
+            this.max_height = object.get_int_member("max_height");
+            this.hwaccel = object.get_string_member("hwaccel");
         }
     }
 
-    class MjpegButtonConfig : GLib.Object, ButtonConfig, Config {
+    class MjpegButtonConfig : GLib.Object, Config, ButtonConfig {
         public ButtonType button_type { get { return ButtonType.MJPEG_PIPE; } }
         private string _title;
         public string title {
@@ -138,14 +199,14 @@ namespace ScreenRec {
         }
 
         public string command;
-        public int width;
-        public int height;
+        public int64 width;
+        public int64 height;
         public string hwaccel;
 
         public MjpegButtonConfig() {
             this.title = "MJPEG Pipe Source";
-            uint8 raw_id[16] = {0};
-            char[] textual_id = {};
+            var raw_id = new uint8[16];
+            var textual_id = new char[36];
             UUID.generate_random(raw_id);
             UUID.unparse(raw_id, textual_id);
             this.id = (string)textual_id;
@@ -155,16 +216,33 @@ namespace ScreenRec {
             this.hwaccel = "opengl"; // TODO: make dynamic query
         }
 
-        public void serialize() {
-
+        public Json.Object serialize() {
+            var object = new Json.Object();
+            object.set_string_member("id", this.id);
+            object.set_string_member("title", this.title);
+            object.set_string_member("button_type", "mjpeg");
+            object.set_string_member("command", this.command);
+            object.set_int_member("width", this.width);
+            object.set_int_member("height", this.height);
+            object.set_string_member("hwaccel", this.hwaccel);
+            return object;
         }
 
-        public void deserialize(Json.Node json) {
-
+        public void deserialize(Json.Object object) throws ConfigParseError {
+            var type = object.get_string_member("button_type");
+            if (type != "mjpeg") {
+                throw new ConfigParseError.WRONG_TYPE("Wrong config type");
+            }
+            this.id = object.get_string_member("id");
+            this.title = object.get_string_member("title");
+            this.command = object.get_string_member("command");
+            this.width = object.get_int_member("width");
+            this.height = object.get_int_member("height");
+            this.hwaccel = object.get_string_member("hwaccel");
         }
     }
 
-    class PlayerButtonConfig : GLib.Object, ButtonConfig,Config {
+    class PlayerButtonConfig : GLib.Object, Config, ButtonConfig {
         public ButtonType button_type { get { return ButtonType.VIDEO_PLAYER; } }
         private string _title;
         public string title {
@@ -185,8 +263,8 @@ namespace ScreenRec {
 
         public PlayerButtonConfig() {
             this.title = "RTMP Stream Source";
-            uint8 raw_id[16] = {0};
-            char[] textual_id = {};
+            var raw_id = new uint8[16];
+            var textual_id = new char[36];
             UUID.generate_random(raw_id);
             UUID.unparse(raw_id, textual_id);
             this.id = (string)textual_id;
@@ -197,12 +275,31 @@ namespace ScreenRec {
             this.hwaccel = "opengl"; // TODO: make dynamic query
         }
 
-        public void serialize() {
-
+        public Json.Object serialize() {
+            var object = new Json.Object();
+            object.set_string_member("id", this.id);
+            object.set_string_member("title", this.title);
+            object.set_string_member("button_type", "player");
+            object.set_string_member("filename", this.filename);
+            object.set_boolean_member("auto_play", this.auto_play);
+            object.set_boolean_member("restart_on_deactivate", this.restart_on_deactivate);
+            object.set_boolean_member("seek_bar", this.seek_bar);
+            object.set_string_member("hwaccel", this.hwaccel);
+            return object;
         }
 
-        public void deserialize(Json.Node json) {
-
+        public void deserialize(Json.Object object) throws ConfigParseError {
+            var type = object.get_string_member("button_type");
+            if (type != "player") {
+                throw new ConfigParseError.WRONG_TYPE("Wrong config type");
+            }
+            this.id = object.get_string_member("id");
+            this.title = object.get_string_member("title");
+            this.filename = object.get_string_member("filename");
+            this.auto_play = object.get_boolean_member("auto_play");
+            this.restart_on_deactivate = object.get_boolean_member("restart_on_deactivate");
+            this.seek_bar = object.get_boolean_member("seek_bar");
+            this.hwaccel = object.get_string_member("hwaccel");
         }
    }
 }
