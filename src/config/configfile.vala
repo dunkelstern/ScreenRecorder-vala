@@ -14,15 +14,16 @@ namespace ScreenRec {
         public RecorderConfig rec_settings;
         public StreamConfig stream_settings;
         public AudioConfig audio_settings;
+        private string? path;
 
         public ConfigFile(string? config_path = null) {
-            string? path = config_path;
-            if (path == null) {
+            this.path = config_path;
+            if (this.path == null) {
                 var builder = new StringBuilder(Environment.get_user_config_dir());
                 builder.append("/ScreenRecorder/default.json");
-                path = builder.str;
+                this.path = builder.str;
             }
-            var file = File.new_for_path(path);
+            var file = File.new_for_path(this.path);
 
             this.buttons = {};
             this.rec_settings = new RecorderConfig();
@@ -39,25 +40,21 @@ namespace ScreenRec {
 
             var root = parser.get_root().get_object();
             try {
-                stderr.printf("Deserializing rec_settings\n");
                 this.rec_settings.deserialize(root.get_object_member("rec_settings"));
             } catch (Error e) {
                 stderr.printf("Unable to parse recording settings: %s\n", e.message);
             }
             try {
-                stderr.printf("Deserializing stream_settings\n");
                 this.stream_settings.deserialize(root.get_object_member("stream_settings"));
             } catch (Error e) {
                 stderr.printf("Unable to parse streaming settings: %s\n", e.message);
             }
             try {
-                stderr.printf("Deserializing audio_settings\n");
                 this.audio_settings.deserialize(root.get_object_member("audio_settings"));
             } catch (Error e) {
                 stderr.printf("Unable to parse audio settings: %s\n", e.message);
             }
 
-            stderr.printf("Deserializing buttons\n");
             var buttons = root.get_array_member("buttons");
             foreach (var element in buttons.get_elements()) {
                 var button = element.get_object();
@@ -66,7 +63,37 @@ namespace ScreenRec {
                     this.buttons += conf;
                 }
             }
-            stderr.printf("%d Buttons\n", this.buttons.length);
+        }
+
+        public void save() {
+            var root = new Json.Object();
+
+            root.set_object_member("rec_settings", this.rec_settings.serialize());
+            root.set_object_member("stream_settings", this.stream_settings.serialize());
+            root.set_object_member("audio_settings", this.audio_settings.serialize());
+
+            var buttons = new Json.Array();
+            foreach(var button in this.buttons) {
+                buttons.add_object_element(button.serialize());
+            }
+
+            root.set_array_member("buttons", buttons);
+
+            var generator = new Json.Generator();
+            var node = new Json.Node(NodeType.OBJECT);
+            node.set_object(root);
+            generator.indent = 4;
+            generator.indent_char = 32;
+            generator.pretty = true;
+            generator.root = node;
+
+            var str = generator.to_data(null);
+            var file = File.new_for_path(this.path);
+            try {
+                file.replace(null, false, FileCreateFlags.PRIVATE).write(str.data);
+            } catch (Error e) {
+                stderr.printf("Error writing config file: %s\n", e.message);
+            }
         }
     }
 }
