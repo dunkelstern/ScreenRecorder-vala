@@ -101,13 +101,10 @@ PKG_CHECK_MODULES(SCREENREC, [
 
 	gstreamer-1.0 >= 1.10
 	gstreamer-base-1.0 >= 1.10
-	gstreamer-bad-base-1.0 >= 1.10
 	gstreamer-plugins-base-1.0 >= 1.10
 	gstreamer-plugins-bad-1.0 >= 1.10
 	gstreamer-audio-1.0 >= 1.10
-	gstreamer-bad-audio-1.0 >= 1.10
 	gstreamer-video-1.0 >= 1.10
-	gstreamer-bad-video-1.0 >= 1.10
 	gstreamer-gl-1.0 >= 1.10
 	gstreamer-player-1.0 >= 1.10
 
