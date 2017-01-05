@@ -10,6 +10,7 @@ namespace ScreenRec {
         private Box button_box;
 
         public MainWindow() {
+            // window settings
             this.title = "Screen Recorder";
             this.set_default_size (200, 200);
             this.destroy.connect (Gtk.main_quit);
@@ -43,7 +44,7 @@ namespace ScreenRec {
             this.add(button_box);
 
             // Fill button box
-            build_source_buttons();
+            build_source_buttons(button_box);
 
             // show the lot
             this.show_all();
@@ -57,15 +58,56 @@ namespace ScreenRec {
 
         }
 
-        private void on_stream(Button button) {
 
+        private void on_source_button(Button source) {
+            var config = ConfigFile.instance();
+
+            // find button
+            ButtonConfig? slot = null;
+            foreach(var button in config.buttons) {
+                if (source.name == button.id) {
+                    slot = button;
+                    break;
+                }
+            }
+
+            // not found, cancel
+            if (slot == null) {
+                return; // wat?
+            }
+
+            // run the correct playback window
+            switch(slot.button_type) {
+                case ButtonType.VIDEO4LINUX:
+                case ButtonType.RTMP_STREAM:
+                case ButtonType.MJPEG_PIPE:
+                case ButtonType.VIDEO_PLAYER:
+                default:
+                    // not implemented
+                    stderr.printf("Button %s pressed, button type not implemented\n", slot.title);
+                    break;
+            }
         }
 
-        private void build_source_buttons() {
+        private void build_source_buttons(Box box) {
+
+            // remove all buttons that are already there
+            var children = box.get_children();
+            foreach(var child in children) {
+                box.remove(child);
+            }
+
+            // add new buttons
             var config = ConfigFile.instance();
             foreach(var button in config.buttons) {
-                stdout.printf("Adding button %s of type %s\n", button.title, button.button_type.to_string());
+                var ui_button = new Gtk.Button();
+                ui_button.label = button.title;
+                ui_button.name = button.id;
+                ui_button.clicked.connect(on_source_button);
+                box.pack_start(ui_button, true, true, 0);
             }
+
+            box.show_all();
         }
     }
 }
