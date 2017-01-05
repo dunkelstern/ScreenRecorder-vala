@@ -79,6 +79,8 @@ namespace ScreenRec {
             // run the correct playback window
             switch(slot.button_type) {
                 case ButtonType.VIDEO4LINUX:
+                    var window = new V4l2Window(slot as V4l2ButtonConfig);
+                    break;
                 case ButtonType.RTMP_STREAM:
                 case ButtonType.MJPEG_PIPE:
                 case ButtonType.VIDEO_PLAYER:

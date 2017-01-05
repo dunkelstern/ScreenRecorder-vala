@@ -25,10 +25,12 @@ screenrec_VALAFLAGS = \
 	--pkg gtk+-3.0 \
 	--pkg json-glib-1.0 \
 	--pkg gstreamer-1.0 \
+	--pkg gstreamer-video-1.0 \
 	--pkg gstreamer-net-1.0 \
 	--pkg gstreamer-rtsp-1.0 \
 	--pkg gio-2.0 \
 	--pkg gdk-3.0 \
+	--pkg gdk-x11-3.0 \
 	--pkg uuid
 
 screenrec_LDADD = $(SCREENREC_LIBS)
