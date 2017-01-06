@@ -8,6 +8,7 @@ namespace ScreenRec {
         private Button record_button;
         private Button config_button;
         private Box button_box;
+        private PlaybackWindow[] windows = {};
 
         public MainWindow() {
             // window settings
@@ -76,10 +77,21 @@ namespace ScreenRec {
                 return; // wat?
             }
 
+            // try to find the window
+            foreach(var window in this.windows) {
+                if (window.config.id == source.name) {
+                    // found: show and raise
+                    window.show_all();
+                    window.present();
+                    return;
+                }
+            }
+
             // run the correct playback window
             switch(slot.button_type) {
                 case ButtonType.VIDEO4LINUX:
                     var window = new V4l2Window(slot as V4l2ButtonConfig);
+                    this.windows += window;
                     break;
                 case ButtonType.RTMP_STREAM:
                 case ButtonType.MJPEG_PIPE:
