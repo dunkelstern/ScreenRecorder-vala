@@ -26,7 +26,7 @@ namespace ScreenRec {
         protected HeaderBar header;
         protected Gst.Bus? bus;
         protected Pipeline? pipeline;
-        protected bool auto_start = false;
+        protected bool auto_start = true;
 
         public PlaybackWindow(ButtonConfig config) {
             this.config = config;
@@ -120,7 +120,14 @@ namespace ScreenRec {
                     }
                 }
             });
-            this.pipeline.set_state(Gst.State.PLAYING);
+
+            // when we should autostart go into playing state immediately
+            if (this.auto_start) {
+                this.pipeline.set_state(Gst.State.PLAYING);
+            } else {
+                // else just start and pause the pipeline
+                this.pipeline.set_state(Gst.State.PAUSED);
+            }
         }
 
         protected virtual void stop() {
@@ -136,9 +143,6 @@ namespace ScreenRec {
 
         protected virtual void on_zoom(Button source) {
             // overridden
-        }
-
-        protected virtual void on_message(Gst.Bus bus, Gst.Message message) {
         }
     }
 }
