@@ -7,8 +7,9 @@ namespace ScreenRec {
 
     class PlaybackBin: GLib.Object {
 
-        public static Gst.Bin? make(string hwaccel, bool sync = false) {
-            var sink = new Gst.Bin("sink");
+        public static Gst.Bin make(string hwaccel, bool sync = true) {
+            var sink = new Gst.Bin("playback_sink");
+
             switch (hwaccel) {
                 case "vaapi": {
                     var uploader = Gst.ElementFactory.make("vaapipostproc", "postproc");
@@ -61,12 +62,13 @@ namespace ScreenRec {
                     break;
                 }
                 default:
-                    return null;
-            }
+                    stderr.printf("Error: unknown hwaccel '%s'\n", hwaccel);
+                    break;
+            }            
             return sink;
         }
 
-        static string[] available_hwaccels() {
+        public static string[] available_hwaccels() {
             return {
                 // TODO: make dynamic, only return available ones
                 "vaapi",

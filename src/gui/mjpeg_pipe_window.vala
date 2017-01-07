@@ -115,8 +115,6 @@ namespace ScreenRec {
             this.pipeline.add(sink);
             src.link(scaler);
             scaler.link(sink);
-
-            dump_pipeline(this.pipeline);
         }
 
         protected override void stop() {
