@@ -11,6 +11,7 @@ screenrec_SOURCES = \
 	gst_bins/gst_debug.vala \
 	gst_bins/audio_encoder_bin.vala \
 	gst_bins/video_encoder_bin.vala \
+	gst_bins/muxer_bin.vala \
 	gst_bins/playback_bin.vala \
 	gui/main_window.vala \
 	gui/playback_window.vala \
