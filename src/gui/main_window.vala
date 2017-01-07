@@ -93,9 +93,12 @@ namespace ScreenRec {
                     var window = new V4l2Window(slot as V4l2ButtonConfig);
                     this.windows += window;
                     break;
-                case ButtonType.RTMP_STREAM:
-                case ButtonType.MJPEG_PIPE:
                 case ButtonType.VIDEO_PLAYER:
+                    var window = new PlayerWindow(slot as PlayerButtonConfig);
+                    this.windows += window;
+                    break;
+                case ButtonType.MJPEG_PIPE:
+                case ButtonType.RTMP_STREAM:
                 default:
                     // not implemented
                     stderr.printf("Button %s pressed, button type not implemented\n", slot.title);

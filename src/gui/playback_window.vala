@@ -69,12 +69,14 @@ namespace ScreenRec {
         }
 
         protected void setup(int width = 640, int height = 480, bool fixed = false) {
+            // setup function to be called after setting up all widgets
             this.set_default_size(width, height);
             this.video_area.set_size_request(width, height);
             if (fixed) {
                 this.resizable = false;
             }
 
+            // connect play and stop actions
             this.show.connect(play);
             this.hide.connect(stop);
             this.delete_event.connect(() => {
@@ -82,24 +84,29 @@ namespace ScreenRec {
                 return true;
             });
 
+            // show the window
             this.show_all();
         }
 
         protected virtual void play() {
+            // aquire the XID of the video area
             uint val = 0;
             this.xid = &val;
             this.xid = (uint*)((Gdk.X11.Window)this.video_area.get_window()).get_xid();
             stderr.printf("XID: %p\n", this.xid);
 
+            // if there's no pipeline there's not point int trying anything
             stderr.printf("%s: play\n", this.config.title);
             if (this.pipeline == null) {
                 return;
             }
 
+            // fetch bus, add signal watchers
             this.bus = this.pipeline.get_bus();
             this.bus.add_signal_watch();
             this.bus.enable_sync_message_emission();
 
+            // this is used for reparenting the overlay window into our target
             this.sync_handler = this.bus.sync_message.connect((bus,message) => {
                 if(Gst.Video.is_video_overlay_prepare_window_handle_message (message)) {
                     stderr.printf("Setting xid\n");
@@ -108,6 +115,8 @@ namespace ScreenRec {
                     overlay.set_window_handle(this.xid);
                 }
             });
+
+            // on error stop the pipeline and log the error
             this.message_handler = this.bus.message.connect((bus, message) => {
                if (message.type == Gst.MessageType.ERROR) {
                     Error err;
@@ -131,11 +140,15 @@ namespace ScreenRec {
         }
 
         protected virtual void stop() {
+            // stop would only work if the window is actually visible
             if (this.visible) {
                 stderr.printf("%s: stop\n", this.config.title);
                 if (this.pipeline != null) {
+                    // disconnect the message handlers
                     this.bus.disconnect(this.sync_handler);
                     this.bus.disconnect(this.message_handler);
+
+                    // stop the pipeline and free resources
                     this.pipeline.set_state(Gst.State.NULL);
                 }
             }
