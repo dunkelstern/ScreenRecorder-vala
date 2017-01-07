@@ -1,0 +1,78 @@
+{
+	"folders":
+	[
+		{
+			"path": ".",
+            "file_exclude_patterns": [
+                "*~",
+                "*.in",
+                "*.c",
+                "*.stamp",
+                ".gitignore",
+                ".gitmodules",
+                ".git",
+                "configure",
+                "aclocal.m4",
+                "config.log",
+                "config.status",
+                "config.h",
+                "Makefile",
+                "libtool",
+                "stamp-*"
+            ],
+            "folder_exclude_patterns": [
+                "autom4te.cache",
+                "build-aux",
+                "m4",
+                "src",
+                ".git"
+            ],
+            "name": "Root Folder"
+		},
+        {
+            "path": "src",
+            "file_exclude_patterns": [
+                "*~",
+                "*.in",
+                "*.c",
+                "*.stamp",
+                ".dirstamp",
+                ".gitignore",
+                "Makefile",
+                "screenrec"
+            ],
+            "folder_exclude_patterns": [
+                ".deps",
+                ".libs"
+            ],
+            "name": "Source"
+        }
+	],
+    "settings": {
+        "tab_size": 4,
+        "translate_tabs_to_spaces": true
+    },
+    "build_systems": [
+        {
+            "name": "autogen",
+            "cmd": ["autogen.sh"],
+            "working_dir": "${project_path}"
+        },
+        {
+            "name": "configure",
+            "cmd": ["configure"],
+            "working_dir": "${project_path}"
+        },
+        {
+            "name": "make",
+            "cmd": ["make"],
+            "working_dir": "${project_path}/src",
+            "file_regex": "^([^:]+):([0-9]+).([0-9]+)-[^:]*: (.*)$"
+        },
+        {
+            "name": "make clean",
+            "cmd": ["make", "maintainer-clean"],
+            "working_dir": "${project_path}",
+        }
+    ]
+}
