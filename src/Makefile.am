@@ -8,6 +8,7 @@ screenrec_SOURCES = \
 	config/config_recording.vala \
 	config/config_streaming.vala \
 	config/config_buttons.vala \
+	gst_bins/gst_debug.vala \
 	gst_bins/audio_encoder_bin.vala \
 	gst_bins/video_encoder_bin.vala \
 	gst_bins/playback_bin.vala \
