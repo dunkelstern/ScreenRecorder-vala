@@ -10,11 +10,14 @@ namespace ScreenRec {
         private Box button_box;
         private PlaybackWindow[] windows = {};
 
+        private MuxerBin muxer;
+        private Gst.Pipeline? pipeline = null;
+
         public MainWindow() {
             // window settings
             this.title = "Screen Recorder";
             this.set_default_size (200, 200);
-            this.destroy.connect (Gtk.main_quit);
+            this.destroy.connect(quit);
             this.border_width = 0;
             this.resizable = false;
 
@@ -51,8 +54,68 @@ namespace ScreenRec {
             this.show_all();
         }
 
-        private void on_record(Button button) {
+        private void create_recorder() {
+            var config = ConfigFile.instance();
 
+            var video_src = Gst.ElementFactory.make("ximagesrc", "video_src");
+            video_src.set("display-name", ":0." + config.rec_settings.screen.to_string());
+            video_src.set("use-damage", 0);
+            video_src.set("startx", 0);
+            video_src.set("starty", 0);
+            video_src.set("endx", config.rec_settings.width - 1);
+            video_src.set("endy", config.rec_settings.height - 1);
+            video_src.set("do-timestamp", true);
+
+            var audio_src = Gst.ElementFactory.make("pulsesrc", "audio_src");
+            audio_src.set("device", config.audio_settings.device);
+            audio_src.set("client-name", "ScreenRec");
+            audio_src.set("do-timestamp", true);
+
+            var video_encoder = VideoEncoderBin.make();
+            var audio_encoder = AudioEncoderBin.make();
+            this.muxer = new MuxerBin("mpegts");
+
+            this.pipeline = new Gst.Pipeline("record");
+            this.pipeline.add(video_src);
+            this.pipeline.add(audio_src);
+            this.pipeline.add(video_encoder);
+            this.pipeline.add(audio_encoder);
+            this.pipeline.add(this.muxer.bin);
+
+            video_src.link(video_encoder);
+            audio_src.link(audio_encoder);
+            this.muxer.link(audio_encoder, video_encoder);
+
+            dump_pipeline(this.pipeline);
+        }
+
+        private void on_record(Button button) {
+            if (this.pipeline == null) {
+                // create recorder if not existing
+                this.create_recorder();
+            }
+
+            Gst.State state;
+            Gst.State pending;
+            this.pipeline.get_state(out state, out pending, 0);
+
+            // set the record button to display the correct symbol
+            var icon_name = "media-record";
+            if (state == Gst.State.PLAYING) {
+                var eos = new Gst.Event.eos();
+                this.pipeline.send_event(eos);
+                //this.pipeline.set_state(Gst.State.NULL);
+            } else {
+                icon_name = "media-playback-stop-symbolic";
+                var path = "/home/dark/Capture/output.ts";
+                this.muxer.set_destination(path);
+                this.pipeline.set_state(Gst.State.PLAYING);
+            }
+
+            // update button icon
+            var icon = new ThemedIcon(icon_name);
+            var image = new Image.from_gicon(icon, IconSize.BUTTON);
+            record_button.image = image;
         }
 
         private void on_config(Button button) {
@@ -131,6 +194,20 @@ namespace ScreenRec {
             }
 
             box.show_all();
+        }
+
+        private void quit() {
+            if (this.pipeline != null) {
+                Gst.State state;
+                Gst.State pending;
+                this.pipeline.get_state(out state, out pending, 0);
+                if (state == Gst.State.PLAYING) {
+                    var eos = new Gst.Event.eos();
+                    this.pipeline.send_event(eos);
+                    this.pipeline.set_state(Gst.State.NULL);
+                }
+            }
+            Gtk.main_quit();
         }
     }
 }
