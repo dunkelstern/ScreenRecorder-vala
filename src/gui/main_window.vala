@@ -102,6 +102,9 @@ namespace ScreenRec {
                     this.windows += window;
                     break;
                 case ButtonType.RTMP_STREAM:
+                    var window = new RtmpWindow(slot as RtmpButtonConfig);
+                    this.windows += window;
+                    break;
                 default:
                     // not implemented
                     stderr.printf("Button %s pressed, button type not implemented\n", slot.title);
