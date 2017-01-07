@@ -41,7 +41,7 @@ namespace ScreenRec {
             // Header bar
             header = new HeaderBar();
             header.set_show_close_button(true);
-            header.title = "Screen Recorder";
+            header.title = config.title;
             this.set_titlebar(header);
 
             // Zoom Button
