@@ -98,6 +98,9 @@ namespace ScreenRec {
                     this.windows += window;
                     break;
                 case ButtonType.MJPEG_PIPE:
+                    var window = new MjpegWindow(slot as MjpegButtonConfig);
+                    this.windows += window;
+                    break;
                 case ButtonType.RTMP_STREAM:
                 default:
                     // not implemented
