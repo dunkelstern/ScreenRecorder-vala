@@ -23,6 +23,7 @@ namespace ScreenRec {
         public V4l2Window(V4l2ButtonConfig config) {
             base(config);
 
+            // button to open v4l2 configuration panel
             settings_button = new Gtk.Button();
             var icon = new ThemedIcon("preferences-system");
             var image = new Image.from_gicon(icon, IconSize.BUTTON);
@@ -30,6 +31,7 @@ namespace ScreenRec {
             settings_button.clicked.connect(on_settings);
             header.pack_end(settings_button);
 
+            // button to re-focus the camera
             focus_button = new Gtk.Button();
             icon = new ThemedIcon("video-display-symbolic");
             image = new Image.from_gicon(icon, IconSize.BUTTON);
@@ -100,6 +102,7 @@ namespace ScreenRec {
             // scaler
             var scaler = new Gst.Bin("scaler");
             if (this._config.hwaccel == "vaapi") {
+                // hardware accelerated scaler
                 this.scaler_object = Gst.ElementFactory.make("vaapipostproc", "scaler");
                 this.scaler_object.set("width", this._config.width / 2);
                 this.scaler_object.set("height", this._config.height / 2);
@@ -111,6 +114,7 @@ namespace ScreenRec {
                 scaler.add_pad(ghost_sink);
                 scaler.add_pad(ghost_src);
             } else {
+                // software scaling
                 var videoscale = Gst.ElementFactory.make("videoscale", "scaler");
                 scaler.add(videoscale);
 
@@ -152,8 +156,11 @@ namespace ScreenRec {
 
         private void on_focus(Button source) {
             try {
+                // turn on auto focusing
                 var launcher = new SubprocessLauncher(SubprocessFlags.NONE);
                 launcher.spawnv({ "/usr/bin/v4l2-ctl", "-d", this._config.device, "-c", "focus_auto=1" });
+                
+                // after 8 seconds turn of focusing (yes some cameras are that slow!)
                 Timeout.add_seconds(8, () => {
                     try {
                         launcher.spawnv({ "/usr/bin/v4l2-ctl", "-d", this._config.device, "-c", "focus_auto=1" });
@@ -173,10 +180,15 @@ namespace ScreenRec {
                 "/usr/bin/v4l2ucp"
             };
 
+            // try all known apps that work to set camera settings without displaying
+            // a output window
             foreach(var app in settings_apps) {
                 var file = File.new_for_path(app);
+
+                // check if the tool is installed
                 if (file.query_exists()) {
                     try {
+                        // try launching the tool, if successful break the loop
                         var launcher = new SubprocessLauncher(SubprocessFlags.NONE);
                         launcher.spawnv({app});
                         break;
