@@ -27,6 +27,7 @@ using Gst;
 using ScreenRec;
 
 int main (string[] args) {
+    X.init_threads(); // welcome to the pain
     Gtk.init (ref args);
     Gst.init (ref args);
 
