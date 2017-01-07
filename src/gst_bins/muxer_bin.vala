@@ -6,74 +6,36 @@ using ScreenRec;
 namespace ScreenRec {
 
     class MuxerBin: GLib.Object {
-        private Gst.Bin bin;
+        public Gst.Bin bin;
+        private string muxer;
         private Gst.Element filesink;
+        private Gst.Element out_queue;
+        private Gst.Element used_muxer;
 
         public MuxerBin(string muxer) {
-            this.bin = MuxerBin.make(muxer, out this.filesink);
-        }
-
-        public void connect(Gst.Element audio, Gst.Element video) {
-            var audio_in_pad = this.bin.get_static_pad("audio_sink");
-            var audio_out_pad = audio.get_static_pad("src");
-            var video_in_pad = this.bin.get_static_pad("video_sink");
-            var video_out_pad = audio.get_static_pad("src");
-            audio_out_pad.link(audio_in_pad);
-            video_out_pad.link(video_in_pad);
-        }
-
-        public void set_destination(string path) {
-            this.filesink.set("location", path);
-        }
-
-        public void set_state(Gst.State state) {
-            this.bin.set_state(state);
-        }
-
-        public void sync_state_with_parent() {
-            this.bin.sync_state_with_parent();
-        }
-
-        private static Gst.Bin? make(string muxer, out Gst.Element filesink) {
-            var bin = new Gst.Bin("muxer");
+            this.muxer = muxer;
+            this.bin = new Gst.Bin("muxer");
 
             // output part of pipeline
-            var out_queue = Gst.ElementFactory.make("multiqueue", "out_queue");
+            out_queue = Gst.ElementFactory.make("multiqueue", "out_queue");
             bin.add(out_queue);
+            out_queue.pad_added.connect(pad_added);
 
-            var audio_out_pad = out_queue.get_request_pad("src_%u");
-            var video_out_pad = out_queue.get_request_pad("src_%u");
-
-            Gst.Element used_muxer;
             switch(muxer) {
                 case "mpegts":
                     used_muxer = Gst.ElementFactory.make("mpegtsmux", "muxer");
-                    bin.add(used_muxer);
-                    var mux_audio_pad = used_muxer.get_request_pad("sink_%d");
-                    var mux_video_pad = used_muxer.get_request_pad("sink_%d");
-                    audio_out_pad.link(mux_audio_pad);
-                    video_out_pad.link(mux_video_pad);
                     break;
                 case "mkv":
                     used_muxer = Gst.ElementFactory.make("matroskamux", "muxer");
-                    bin.add(used_muxer);
-                    var mux_audio_pad = used_muxer.get_request_pad("audio_%u");
-                    var mux_video_pad = used_muxer.get_request_pad("video_%u");
-                    audio_out_pad.link(mux_audio_pad);
-                    video_out_pad.link(mux_video_pad);
                     break;
                 case "mp4":
                     used_muxer = Gst.ElementFactory.make("mp4mux", "muxer");
-                    bin.add(used_muxer);
-                    var mux_audio_pad = used_muxer.get_request_pad("audio_%u");
-                    var mux_video_pad = used_muxer.get_request_pad("video_%u");
-                    audio_out_pad.link(mux_audio_pad);
-                    video_out_pad.link(mux_video_pad);
                     break;
                 default:
                     stderr.printf("Error: unknown muxer '%s'\n", muxer);
-                    return null;
+                    return;
             }
+            bin.add(used_muxer);
 
             filesink = Gst.ElementFactory.make("filesink", "filesink");
             filesink.set("sync", false);
@@ -87,8 +49,55 @@ namespace ScreenRec {
             var ghost_video_sink = new Gst.GhostPad("video_sink", video_in_pad);
             bin.add_pad(ghost_audio_sink);
             bin.add_pad(ghost_video_sink);
+        }
 
-            return bin;
+        private void pad_added(Gst.Element src, Gst.Pad pad) {
+            stderr.printf("Pad added: %s -> %s (caps: %s)\n", src.name, pad.name, pad.get_current_caps().to_string());
+            PadLinkReturn result;
+            if ((src == this.out_queue) && (pad.direction == PadDirection.SRC)) {
+                switch(this.muxer) {
+                    case "mpegts": {
+                        var mux_pad = used_muxer.get_request_pad("sink_%d");
+                        result = pad.link(mux_pad);
+                        break;      
+                    }                  
+                    case "mkv":
+                    case "mp4": {
+                        string sink_name = "audio_%u";
+                        if (pad.name == "src_1") {
+                            sink_name = "video_%u";
+                        }
+                        var mux_pad = used_muxer.get_request_pad(sink_name);
+                        result = pad.link(mux_pad);
+                        break;      
+                    }
+                    default:
+                        return;
+                }
+                if (result != PadLinkReturn.OK) {
+                    stderr.printf("Could not link pad to muxer: %s", result.to_string());
+                }
+            }
+        }
+
+        public void link(Gst.Element audio, Gst.Element video) {
+            PadLinkReturn result;
+            var audio_in_pad = this.bin.get_static_pad("audio_sink");
+            var audio_out_pad = audio.get_static_pad("src");
+            var video_in_pad = this.bin.get_static_pad("video_sink");
+            var video_out_pad = video.get_static_pad("src");
+            result = audio_out_pad.link(audio_in_pad);
+            if (result != PadLinkReturn.OK) {
+                stderr.printf("Could not link audio pad to muxer: %s", result.to_string());
+            }
+            result = video_out_pad.link(video_in_pad);
+            if (result != PadLinkReturn.OK) {
+                stderr.printf("Could not link video pad to muxer: %s", result.to_string());
+            }
+        }
+
+        public void set_destination(string path) {
+            this.filesink.set("location", path);
         }
 
         public static string[] available_muxers() {
