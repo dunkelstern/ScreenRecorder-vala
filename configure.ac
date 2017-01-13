@@ -114,6 +114,8 @@ PKG_CHECK_MODULES(SCREENREC, [
 
 	gstreamer-codecparsers-1.0 >= 1.10
 	gstreamer-mpegts-1.0 >= 1.10
+
+	gee-0.8 >= 0.18.1
 ])
 
 

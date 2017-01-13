@@ -1,6 +1,7 @@
 using Gtk;
 using Gdk;
 using Gst;
+using Gee;
 using ScreenRec;
 
 namespace ScreenRec {
@@ -100,13 +101,12 @@ namespace ScreenRec {
             this.filesink.set("location", path);
         }
 
-        public static string[] available_muxers() {
-            return {
-                // TODO: make dynamic, only return available ones
-                "mpegts",
-                "mkv",
-                "mp4"
-            };
+        public static HashMap<string,string> available_muxers() {
+            var result = new HashMap<string,string>();
+            result.set("mpegts", "MPEG TS");
+            result.set("mkv", "Matroska");
+            result.set("mp4", "MPEG 4");
+            return result; // TODO: filter for availability
         }
     }
 }

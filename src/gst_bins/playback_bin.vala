@@ -1,6 +1,7 @@
 using Gtk;
 using Gdk;
 using Gst;
+using Gee;
 using ScreenRec;
 
 namespace ScreenRec {
@@ -68,14 +69,13 @@ namespace ScreenRec {
             return sink;
         }
 
-        public static string[] available_hwaccels() {
-            return {
-                // TODO: make dynamic, only return available ones
-                "vaapi",
-                "opengl",
-                "xvideo",
-                "ximage"
-            };
+        public static HashMap<string,string> available_hwaccels() {
+            var result = new HashMap<string,string>();
+            result.set("vaapi", "Intel VAAPI (Hardware)");
+            result.set("opengl", "OpenGL (Hardware)");
+            result.set("xvideo", "XVideo (Overlay)");
+            result.set("ximage", "X11 (Software)");
+            return result; // TODO: filter for availability
         }
     }
 }

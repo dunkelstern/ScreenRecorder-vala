@@ -1,6 +1,7 @@
 using Gtk;
 using Gdk;
 using Gst;
+using Gee;
 using ScreenRec;
 
 namespace ScreenRec {
@@ -82,15 +83,14 @@ namespace ScreenRec {
             return bin;
         }
 
-        public static string[] available_encoders() {
-            return {
-                // TODO: make dynamic, only return available ones
-                "aac",
-                "mp3",
-                "opus",
-                "speex",
-                "vorbis"
-            };
+        public static HashMap<string,string> available_encoders() {
+            var result = new HashMap<string,string>();
+            result.set("aac", "AAC");
+            result.set("mp3", "MP3");
+            result.set("opus", "Opus");
+            result.set("speex", "Speex");
+            result.set("vorbis", "Vorbis");
+            return result; // TODO: filter for availability
         }
     }
 }

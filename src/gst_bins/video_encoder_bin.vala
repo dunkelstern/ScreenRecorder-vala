@@ -1,6 +1,7 @@
 using Gtk;
 using Gdk;
 using Gst;
+using Gee;
 using ScreenRec;
 
 namespace ScreenRec {
@@ -145,13 +146,12 @@ namespace ScreenRec {
             return sink;
         }
 
-        public static string[] available_encoders() {
-            return {
-                // TODO: make dynamic, only return available ones
-                "vaapi",
-                "x264",
-                "openh264"
-            };
+        public static HashMap<string,string> available_encoders() {
+            var result = new HashMap<string,string>();
+            result.set("vaapi", "Intel VAAPI (Hardware)");
+            result.set("x264", "x264 (Software)");
+            result.set("openh264", "Open H.264 (Software)");
+            return result; // TODO: filter for availability
         }
     }
 }

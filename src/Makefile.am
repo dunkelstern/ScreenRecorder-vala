@@ -35,7 +35,8 @@ screenrec_VALAFLAGS = \
 	--pkg gdk-3.0 \
 	--pkg gdk-x11-3.0 \
 	--pkg x11 \
-	--pkg uuid
+	--pkg uuid \
+	--pkg gee-0.8
 
 screenrec_LDADD = $(SCREENREC_LIBS)
 
