@@ -31,6 +31,7 @@ int main (string[] args) {
     Gtk.init (ref args);
     Gst.init (ref args);
 
+    PulseAudioContext.instance();
     var window = new MainWindow();
 
     window.show_all ();

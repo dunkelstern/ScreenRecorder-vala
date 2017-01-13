@@ -19,7 +19,8 @@ screenrec_SOURCES = \
 	gui/rtmp_window.vala \
 	gui/mjpeg_pipe_window.vala \
 	gui/player_window.vala \
-	gui/settings_window.vala
+	gui/settings_window.vala \
+	audio/pulse.vala
 
 screenrec_CPPFLAGS = $(SCREENREC_CFLAGS)
 screenrec_VALAFLAGS = \
@@ -36,6 +37,8 @@ screenrec_VALAFLAGS = \
 	--pkg gdk-x11-3.0 \
 	--pkg x11 \
 	--pkg uuid \
+	--pkg libpulse \
+	--pkg libpulse-mainloop-glib \
 	--pkg gee-0.8
 
 screenrec_LDADD = $(SCREENREC_LIBS)

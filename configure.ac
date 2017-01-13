@@ -115,6 +115,9 @@ PKG_CHECK_MODULES(SCREENREC, [
 	gstreamer-codecparsers-1.0 >= 1.10
 	gstreamer-mpegts-1.0 >= 1.10
 
+	libpulse >= 9.0
+	libpulse-mainloop-glib >= 9.0
+
 	gee-0.8 >= 0.18.1
 ])
 
