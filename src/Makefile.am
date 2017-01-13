@@ -20,6 +20,10 @@ screenrec_SOURCES = \
 	gui/mjpeg_pipe_window.vala \
 	gui/player_window.vala \
 	gui/settings_window.vala \
+	gui/settings/button_settings.vala \
+	gui/settings/recording_settings.vala \
+	gui/settings/sound_settings.vala \
+	gui/settings/tools.vala \
 	audio/pulse.vala
 
 screenrec_CPPFLAGS = $(SCREENREC_CFLAGS)

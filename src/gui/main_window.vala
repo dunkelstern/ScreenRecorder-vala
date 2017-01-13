@@ -3,7 +3,7 @@ using ScreenRec;
 
 namespace ScreenRec {
 
-    class MainWindow: Gtk.Window {
+    class MainWindow: Gtk.Window, SettingsWindowDelegate {
         private HeaderBar header;
         private Button record_button;
         private Button config_button;
@@ -119,9 +119,12 @@ namespace ScreenRec {
         }
 
         private void on_config(Button button) {
-
+            var settings = new SettingsWindow(this);
         }
 
+        public void update_callback() {
+
+        }
 
         private void on_source_button(Button source) {
             var config = ConfigFile.instance();
