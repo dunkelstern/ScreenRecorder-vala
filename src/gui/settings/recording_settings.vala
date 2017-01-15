@@ -10,6 +10,9 @@ namespace ScreenRec {
         container.column_spacing = 10;
         container.border_width = 10;
 
+        // FIXME: Make dynamic
+        var monitor = Gdk.Display.get_default().get_monitor(0).geometry;
+
         Widget prev;
 
         prev = add_spin_widget(
@@ -44,7 +47,7 @@ namespace ScreenRec {
             (width) => { config.width = width; },
             "Width",
             0,
-            Gdk.Screen.width(),
+            monitor.width,
             (int)config.width,
             left, right
         );
@@ -54,7 +57,7 @@ namespace ScreenRec {
             (height) => { config.height = height; },
             "Height",
             0,
-            Gdk.Screen.height(),
+            monitor.height,
             (int)config.height,
             left, right
         );
@@ -74,7 +77,7 @@ namespace ScreenRec {
             (scale_width) => { config.scale_width = scale_width; },
             "Scale Width",
             0,
-            Gdk.Screen.width(),
+            monitor.width,
             (int)config.scale_width,
             left, right
         );
@@ -84,7 +87,7 @@ namespace ScreenRec {
             (scale_height) => { config.scale_height = scale_height; },
             "Scale Height",
             0,
-            Gdk.Screen.height(),
+            monitor.height,
             (int)config.scale_height,
             left, right
         );

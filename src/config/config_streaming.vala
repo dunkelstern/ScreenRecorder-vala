@@ -15,11 +15,12 @@ namespace ScreenRec {
         public int64 bitrate;
 
         public StreamConfig() {
+            var monitor = Display.get_default().get_monitor(0).geometry;
             this.screen = 0;
             this.encoder = this.available_encoders()[0];
             this.url = "rtmp://127.0.0.1:1935/live/stream";
-            this.width = Screen.width();
-            this.height = Screen.height();
+            this.width = monitor.width;
+            this.height = monitor.height;
             this.scale_width = 0;
             this.scale_height = 0;
             this.fps = 30;
