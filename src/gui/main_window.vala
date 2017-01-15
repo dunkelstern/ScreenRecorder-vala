@@ -55,21 +55,8 @@ namespace ScreenRec {
         }
 
         private void create_recorder() {
-            var config = ConfigFile.instance();
-
-            var video_src = Gst.ElementFactory.make("ximagesrc", "video_src");
-            video_src.set("display-name", ":0." + config.rec_settings.screen.to_string());
-            video_src.set("use-damage", 0);
-            video_src.set("startx", 0);
-            video_src.set("starty", 0);
-            video_src.set("endx", config.rec_settings.width - 1);
-            video_src.set("endy", config.rec_settings.height - 1);
-            video_src.set("do-timestamp", true);
-
-            var audio_src = Gst.ElementFactory.make("pulsesrc", "audio_src");
-            audio_src.set("device", config.audio_settings.device);
-            audio_src.set("client-name", "ScreenRec");
-            audio_src.set("do-timestamp", true);
+            var video_src = ScreenRecorderBin.make(); 
+            var audio_src = AudioRecorderBin.make();
 
             var video_encoder = VideoEncoderBin.make();
             var audio_encoder = AudioEncoderBin.make();
