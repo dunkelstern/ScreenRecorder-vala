@@ -55,11 +55,11 @@ namespace ScreenRec {
         }
 
         private void create_recorder() {
-            var video_src = ScreenRecorderBin.make(); 
-            var audio_src = AudioRecorderBin.make();
+            var video_src = new ScreenRecorderBin(); 
+            var audio_src = new AudioRecorderBin();
 
-            var video_encoder = VideoEncoderBin.make();
-            var audio_encoder = AudioEncoderBin.make();
+            var video_encoder = new VideoEncoderBin();
+            var audio_encoder = new AudioEncoderBin();
             this.muxer = new MuxerBin("mpegts");
 
             this.pipeline = new Gst.Pipeline("record");
@@ -67,11 +67,11 @@ namespace ScreenRec {
             this.pipeline.add(audio_src);
             this.pipeline.add(video_encoder);
             this.pipeline.add(audio_encoder);
-            this.pipeline.add(this.muxer.bin);
+            this.pipeline.add(this.muxer);
 
             video_src.link(video_encoder);
             audio_src.link(audio_encoder);
-            this.muxer.link(audio_encoder, video_encoder);
+            this.muxer.multi_link(audio_encoder, video_encoder);
 
             dump_pipeline(this.pipeline);
         }

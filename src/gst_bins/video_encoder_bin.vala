@@ -6,9 +6,12 @@ using ScreenRec;
 
 namespace ScreenRec {
 
-    class VideoEncoderBin: GLib.Object {
+    class VideoEncoderBin: Gst.Bin {
 
-        public static Gst.Bin? make() {
+        public VideoEncoderBin() {
+            // input part of pipeline
+            GLib.Object(name: "video_encoder_sink");
+
             var config = ConfigFile.instance().rec_settings;
             var scale_width = config.scale_width;
             var scale_height = config.scale_height;
@@ -18,9 +21,6 @@ namespace ScreenRec {
             if (scale_height == 0) {
                 scale_height = config.height;
             }
-
-            // input part of pipeline
-            var sink = new Gst.Bin("video_encoder_sink");
 
             // queue to decouple
             var queue = Gst.ElementFactory.make("queue", "encoder_input_queue");
@@ -39,9 +39,9 @@ namespace ScreenRec {
             var filter = Gst.ElementFactory.make("capsfilter", "rate_capsfilter");
             filter.set_property("caps", caps);
 
-            sink.add(queue);
-            sink.add(videorate);
-            sink.add(filter);
+            this.add(queue);
+            this.add(videorate);
+            this.add(filter);
             queue.link(videorate);
             videorate.link(filter);
 
@@ -54,10 +54,10 @@ namespace ScreenRec {
                     scaler.set("width", scale_width);
                     scaler.set("height", scale_height);                   
                     scaler.set("scale-method", 2);
-                    sink.add(scaler);
+                    this.add(scaler);
 
                     var encoder = Gst.ElementFactory.make("vaapih264enc", "encoder");
-                    sink.add(encoder);
+                    this.add(encoder);
 
                     scaler.link(encoder);
                     src = scaler;
@@ -66,10 +66,10 @@ namespace ScreenRec {
                 }
                 case "x264": {
                     var convert = Gst.ElementFactory.make("autovideoconvert", "convert");
-                    sink.add(convert);
+                    this.add(convert);
 
                     var scaler = Gst.ElementFactory.make("videoscale", "scaler");
-                    sink.add(scaler);
+                    this.add(scaler);
 
                     var scale_cap_string_builder = new StringBuilder("");
                     cap_string_builder.printf(
@@ -80,12 +80,12 @@ namespace ScreenRec {
                     var scale_caps = Gst.Caps.from_string(scale_cap_string_builder.str);
                     var scale_filter = Gst.ElementFactory.make("capsfilter", "scale_filter");
                     scale_filter.set_property("caps", scale_caps);
-                    sink.add(scale_filter);
+                    this.add(scale_filter);
 
                     var encoder = Gst.ElementFactory.make("x264enc", "encoder");
                     encoder.set("speed-preset", "veryfast");
                     //encoder.set("tune", 4)  # zero latency
-                    sink.add(encoder);
+                    this.add(encoder);
 
                     convert.link(scaler);
                     scaler.link(scale_filter);
@@ -97,10 +97,10 @@ namespace ScreenRec {
                 }
                 case "openh264": {
                     var convert = Gst.ElementFactory.make("autovideoconvert", "convert");
-                    sink.add(convert);
+                    this.add(convert);
 
                     var scaler = Gst.ElementFactory.make("videoscale", "scaler");
-                    sink.add(scaler);
+                    this.add(scaler);
 
                     var scale_cap_string_builder = new StringBuilder("");
                     cap_string_builder.printf(
@@ -111,11 +111,11 @@ namespace ScreenRec {
                     var scale_caps = Gst.Caps.from_string(scale_cap_string_builder.str);
                     var scale_filter = Gst.ElementFactory.make("capsfilter", "scale_filter");
                     scale_filter.set_property("caps", scale_caps);
-                    sink.add(scale_filter);
+                    this.add(scale_filter);
 
                     var encoder = Gst.ElementFactory.make("openh264enc", "encoder");
                     encoder.set("complexity", 0);
-                    sink.add(encoder);
+                    this.add(encoder);
 
                     convert.link(scaler);
                     scaler.link(scale_filter);
@@ -127,23 +127,21 @@ namespace ScreenRec {
                 }
                 default:
                     stderr.printf("Error: unknown encoder '%s'\n", config.encoder);
-                    return null;
+                    return;
             }
 
             filter.link(src);
 
             // output part of pipeline
             var parser = Gst.ElementFactory.make("h264parse", "out_parser");
-            sink.add(parser);
+            this.add(parser);
             output.link(parser);
 
             // make sink public
             var ghost_sink = new Gst.GhostPad("sink", queue.get_static_pad("sink"));
             var ghost_src = new Gst.GhostPad("src", parser.get_static_pad("src"));
-            sink.add_pad(ghost_sink);
-            sink.add_pad(ghost_src);
-
-            return sink;
+            this.add_pad(ghost_sink);
+            this.add_pad(ghost_src);
         }
 
         public static HashMap<string,string> available_encoders() {

@@ -138,7 +138,7 @@ namespace ScreenRec {
             }
 
             // output stage
-            var sink = PlaybackBin.make(this._config.hwaccel, false);
+            var sink = new PlaybackBin(this._config.hwaccel, false);
 
             // assemble pipeline
             this.pipeline = new Gst.Pipeline("playback");

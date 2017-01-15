@@ -6,13 +6,12 @@ using ScreenRec;
 
 namespace ScreenRec {
 
-    class AudioEncoderBin: GLib.Object {
+    class AudioEncoderBin: Gst.Bin {
 
-        public static Gst.Bin? make() {
+        public AudioEncoderBin() {
+            GLib.Object(name: "audio_encoder_bin");
+
             var config = ConfigFile.instance().audio_settings;
-
-            // input part of pipeline
-            var bin = new Gst.Bin("audio_encoder_bin");
 
             // input format filter           
             var cap_string_builder = new StringBuilder("");
@@ -31,8 +30,8 @@ namespace ScreenRec {
             queue.set("max-size-bytes", 10485760);  // 1 MB
             queue.set("max-size-time", 10000000000);  // 10 sec
 
-            bin.add(filter);
-            bin.add(queue);
+            this.add(filter);
+            this.add(queue);
             filter.link(queue);
 
             // scaler/encoder part of pipeline
@@ -69,18 +68,16 @@ namespace ScreenRec {
                 }
                 default:
                     stderr.printf("Error: unknown encoder '%s'\n", config.encoder);
-                    return null;
+                    return;
             }
-            bin.add(encoder);
+            this.add(encoder);
             queue.link(encoder);
 
             // make source and sink public
             var ghost_src = new Gst.GhostPad("src", encoder.get_static_pad("src"));
             var ghost_sink = new Gst.GhostPad("sink", filter.get_static_pad("sink"));
-            bin.add_pad(ghost_sink);
-            bin.add_pad(ghost_src);
-
-            return bin;
+            this.add_pad(ghost_sink);
+            this.add_pad(ghost_src);
         }
 
         public static HashMap<string,string> available_encoders() {

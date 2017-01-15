@@ -43,7 +43,7 @@ namespace ScreenRec {
             decoder = Gst.ElementFactory.make("avdec_h264", "decoder");
 
             // sink
-            sink = PlaybackBin.make(this._config.hwaccel, false);
+            sink = new PlaybackBin(this._config.hwaccel, false);
             fake_sink = Gst.ElementFactory.make("fakesink", "audiosink");
 
             // assemble pipeline

@@ -54,7 +54,7 @@ namespace ScreenRec {
             src.set("uri", "file://" + this._config.filename);
 
             // output stage
-            var sink = PlaybackBin.make(this._config.hwaccel, true);
+            var sink = new PlaybackBin(this._config.hwaccel, true);
             src.set("video-sink", sink);
 
             // assemble pipeline

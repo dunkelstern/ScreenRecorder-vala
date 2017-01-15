@@ -6,10 +6,10 @@ using ScreenRec;
 
 namespace ScreenRec {
 
-    class PlaybackBin: GLib.Object {
+    class PlaybackBin: Gst.Bin {
 
-        public static Gst.Bin make(string hwaccel, bool sync = true) {
-            var sink = new Gst.Bin("playback_sink");
+        public PlaybackBin(string hwaccel, bool sync = true) {
+            GLib.Object(name: "playback_sink");
 
             switch (hwaccel) {
                 case "vaapi": {
@@ -17,22 +17,22 @@ namespace ScreenRec {
                     var output = Gst.ElementFactory.make("vaapisink", "output");
                     output.set("sync", sync);
 
-                    sink.add(uploader);
-                    sink.add(output);
+                    this.add(uploader);
+                    this.add(output);
 
                     uploader.link(output);
 
                     var ghost_sink = new Gst.GhostPad("sink", uploader.get_static_pad("sink"));
-                    sink.add_pad(ghost_sink);
+                    this.add_pad(ghost_sink);
                     break;
                 }
                 case "opengl": {
                     var bin = Gst.ElementFactory.make("glsinkbin", "glbin");
                     bin.set("sync", sync);
-                    sink.add(bin);
+                    this.add(bin);
 
                     var ghost_sink = new Gst.GhostPad("sink", bin.get_static_pad("sink"));
-                    sink.add_pad(ghost_sink);
+                    this.add_pad(ghost_sink);
                     break;
                 }
                 case "xvideo": {
@@ -40,33 +40,32 @@ namespace ScreenRec {
                     var output = Gst.ElementFactory.make("xvimagesink", "output");
                     output.set("sync", sync);
                     output.set("colorkey", 0x000000);
-                    sink.add(convert);
-                    sink.add(output);
+                    this.add(convert);
+                    this.add(output);
 
                     convert.link(output);
 
                     var ghost_sink = new Gst.GhostPad("sink", convert.get_static_pad("sink"));
-                    sink.add_pad(ghost_sink);
+                    this.add_pad(ghost_sink);
                     break;
                 }
                 case "ximage": {
                     var convert = Gst.ElementFactory.make("autovideoconvert", "convert");
                     var output = Gst.ElementFactory.make("ximagesink", "output");
                     output.set("sync", sync);
-                    sink.add(convert);
-                    sink.add(output);
+                    this.add(convert);
+                    this.add(output);
 
                     convert.link(output);
 
                     var ghost_sink = new Gst.GhostPad("sink", convert.get_static_pad("sink"));
-                    sink.add_pad(ghost_sink);
+                    this.add_pad(ghost_sink);
                     break;
                 }
                 default:
                     stderr.printf("Error: unknown hwaccel '%s'\n", hwaccel);
                     break;
             }            
-            return sink;
         }
 
         public static HashMap<string,string> available_hwaccels() {

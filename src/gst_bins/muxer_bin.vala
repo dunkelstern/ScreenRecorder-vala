@@ -6,21 +6,20 @@ using ScreenRec;
 
 namespace ScreenRec {
 
-    class MuxerBin: GLib.Object {
-        public Gst.Bin bin;
+    class MuxerBin: Gst.Bin {
         private string muxer;
         private Gst.Element filesink;
         private Gst.Element out_queue;
         private Gst.Element used_muxer;
 
         public MuxerBin(string muxer) {
+            GLib.Object(name: "muxer");
             this.muxer = muxer;
-            this.bin = new Gst.Bin("muxer");
 
             // output part of pipeline
             out_queue = Gst.ElementFactory.make("multiqueue", "out_queue");
-            bin.add(out_queue);
-            out_queue.pad_added.connect(pad_added);
+            this.add(out_queue);
+            out_queue.pad_added.connect(mux_pad_added);
 
             switch(muxer) {
                 case "mpegts":
@@ -36,11 +35,11 @@ namespace ScreenRec {
                     stderr.printf("Error: unknown muxer '%s'\n", muxer);
                     return;
             }
-            bin.add(used_muxer);
+            this.add(used_muxer);
 
             filesink = Gst.ElementFactory.make("filesink", "filesink");
             filesink.set("sync", false);
-            bin.add(filesink);
+            this.add(filesink);
             used_muxer.link(filesink);
 
             // make sink public
@@ -48,12 +47,12 @@ namespace ScreenRec {
             var video_in_pad = out_queue.get_request_pad("sink_%u");
             var ghost_audio_sink = new Gst.GhostPad("audio_sink", audio_in_pad);
             var ghost_video_sink = new Gst.GhostPad("video_sink", video_in_pad);
-            bin.add_pad(ghost_audio_sink);
-            bin.add_pad(ghost_video_sink);
+            this.add_pad(ghost_audio_sink);
+            this.add_pad(ghost_video_sink);
         }
 
-        private void pad_added(Gst.Element src, Gst.Pad pad) {
-            stderr.printf("Pad added: %s -> %s (caps: %s)\n", src.name, pad.name, pad.get_current_caps().to_string());
+        private void mux_pad_added(Gst.Element src, Gst.Pad pad) {
+            // stderr.printf("Pad added: %s -> %s (caps: %s)\n", src.name, pad.name, pad.get_current_caps().to_string());
             PadLinkReturn result;
             if ((src == this.out_queue) && (pad.direction == PadDirection.SRC)) {
                 switch(this.muxer) {
@@ -81,11 +80,11 @@ namespace ScreenRec {
             }
         }
 
-        public void link(Gst.Element audio, Gst.Element video) {
+        public void multi_link(Gst.Element audio, Gst.Element video) {
             PadLinkReturn result;
-            var audio_in_pad = this.bin.get_static_pad("audio_sink");
+            var audio_in_pad = this.get_static_pad("audio_sink");
             var audio_out_pad = audio.get_static_pad("src");
-            var video_in_pad = this.bin.get_static_pad("video_sink");
+            var video_in_pad = this.get_static_pad("video_sink");
             var video_out_pad = video.get_static_pad("src");
             result = audio_out_pad.link(audio_in_pad);
             if (result != PadLinkReturn.OK) {
