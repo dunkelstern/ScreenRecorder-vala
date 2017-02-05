@@ -6,7 +6,9 @@ using ScreenRec;
 
 namespace ScreenRec {
 
-    class VideoEncoderBin: Gst.Bin {
+    class VideoEncoderBin: Gst.Bin, ManualVideoRoutingSink {
+        private Gst.App.Src appsrc;
+        private ManualVideoRoutingSrc? current_source;
 
         public VideoEncoderBin() {
             // input part of pipeline
@@ -22,28 +24,12 @@ namespace ScreenRec {
                 scale_height = config.height;
             }
 
-            // queue to decouple
-            var queue = Gst.ElementFactory.make("queue", "encoder_input_queue");
-            queue.set("max-size-buffers", 200);
-            queue.set("max-size-bytes", 104857600);  // 10 MB
-            queue.set("max-size-time", 10000000000);  // 10 sec
-            
-            // smooth videorate, last chance to drop frames on overload
-            var videorate = Gst.ElementFactory.make("videorate", "videorate");
-            var cap_string_builder = new StringBuilder("");
-            cap_string_builder.printf(
-                "video/x-raw,framerate=%d/1",
-                (int)config.fps
-            );
-            var caps = Gst.Caps.from_string(cap_string_builder.str);
-            var filter = Gst.ElementFactory.make("capsfilter", "rate_capsfilter");
-            filter.set_property("caps", caps);
+            appsrc = Gst.ElementFactory.make("appsrc", "appsrc") as Gst.App.Src;
+            appsrc.set_property("is-live", true);
+            appsrc.set_property("do-timestamp", true);
+            appsrc.set_max_bytes(1920*1080*4*4*2); // 2 4K RGBx frames                
 
-            this.add(queue);
-            this.add(videorate);
-            this.add(filter);
-            queue.link(videorate);
-            videorate.link(filter);
+            this.add(appsrc);
 
             // scaler/encoder part of pipeline
             Gst.Element src;
@@ -72,7 +58,7 @@ namespace ScreenRec {
                     this.add(scaler);
 
                     var scale_cap_string_builder = new StringBuilder("");
-                    cap_string_builder.printf(
+                    scale_cap_string_builder.printf(
                         "video/x-raw,width=%d,height=%d",
                         (int)scale_width,
                         (int)scale_height
@@ -103,7 +89,7 @@ namespace ScreenRec {
                     this.add(scaler);
 
                     var scale_cap_string_builder = new StringBuilder("");
-                    cap_string_builder.printf(
+                    scale_cap_string_builder.printf(
                         "video/x-raw,width=%d,height=%d",
                         (int)scale_width,
                         (int)scale_height
@@ -130,18 +116,46 @@ namespace ScreenRec {
                     return;
             }
 
-            filter.link(src);
+            appsrc.link(src);
 
             // output part of pipeline
             var parser = Gst.ElementFactory.make("h264parse", "out_parser");
             this.add(parser);
             output.link(parser);
 
-            // make sink public
-            var ghost_sink = new Gst.GhostPad("sink", queue.get_static_pad("sink"));
+            // usually you would see something like this:
+
+            // var ghost_sink = new Gst.GhostPad("sink", input_filter.get_static_pad("sink"));
+            // this.add_pad(ghost_sink);
+
+            // but we are routing manually, so no traditional sink
+
+            // make src public
             var ghost_src = new Gst.GhostPad("src", parser.get_static_pad("src"));
-            this.add_pad(ghost_sink);
             this.add_pad(ghost_src);
+        }
+
+        public void consume_sample(Sample buffer) {
+            var result = this.appsrc.push_sample(buffer);
+            if (result != FlowReturn.OK) {
+                stderr.printf("Failed to push sample into video encoder, result = %s\n", result.to_string());
+            }
+        }
+
+        public void shutdown_with_eos() {
+            this.appsrc.end_of_stream();
+        }
+
+        public void set_input_caps(Caps caps) {
+            this.appsrc.set_property("caps", caps);
+        }
+
+        public void connect_to_source(ManualVideoRoutingSrc src) {
+            if (this.current_source != null) {
+                this.current_source.stop_emitting_buffers();
+            }
+            this.current_source = src;
+            this.current_source.start_emitting_buffers(this);
         }
 
         public static HashMap<string,string> available_encoders() {

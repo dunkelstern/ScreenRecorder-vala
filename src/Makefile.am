@@ -15,6 +15,7 @@ screenrec_SOURCES = \
 	gst_bins/playback_bin.vala \
 	gst_bins/screen_recorder_bin.vala \
 	gst_bins/audio_recorder_bin.vala \
+	gst_bins/manual_routing_interface.vala \
 	gui/main_window.vala \
 	gui/playback_window.vala \
 	gui/v4l2_window.vala \
@@ -34,9 +35,11 @@ screenrec_VALAFLAGS = \
 	--pkg gtk+-3.0 \
 	--pkg json-glib-1.0 \
 	--pkg gstreamer-1.0 \
+	--pkg gstreamer-base-1.0 \
 	--pkg gstreamer-video-1.0 \
 	--pkg gstreamer-net-1.0 \
 	--pkg gstreamer-rtsp-1.0 \
+	--pkg gstreamer-app-1.0 \
 	--pkg gio-2.0 \
 	--pkg gio-unix-2.0 \
 	--pkg gdk-3.0 \

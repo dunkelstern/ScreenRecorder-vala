@@ -107,6 +107,7 @@ PKG_CHECK_MODULES(SCREENREC, [
 	gstreamer-video-1.0 >= 1.10
 	gstreamer-gl-1.0 >= 1.10
 	gstreamer-player-1.0 >= 1.10
+	gstreamer-app-1.0 >= 1.10
 
 	gstreamer-net-1.0 >= 1.10
 	gstreamer-rtp-1.0 >= 1.10

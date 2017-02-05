@@ -12,7 +12,12 @@ public void dump_pipeline(Gst.Bin pipeline, int indent = 0) {
     Value item;
     while (iterator.next(out item) != Gst.IteratorResult.DONE) {
         var element = item as Gst.Element;
-        stderr.printf("\n%s%s (%s):\n", indent_str, element.get_type().name(), element.name);
+
+        Gst.State st = Gst.State.NULL;
+        Gst.State pend = Gst.State.NULL;
+        element.get_state(out st, out pend, 0);
+
+        stderr.printf("\n%s%s (name: %s, state: %s, pending: %s):\n", indent_str, element.get_type().name(), element.name, st.to_string(), pend.to_string());
 
         var sub_iterator = element.iterate_src_pads();
         Value src;

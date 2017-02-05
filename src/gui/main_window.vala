@@ -11,7 +11,9 @@ namespace ScreenRec {
         private PlaybackWindow[] windows = {};
 
         private MuxerBin muxer;
+        private VideoEncoderBin video_encoder;
         private Gst.Pipeline? pipeline = null;
+        private Gst.Pipeline? record_pipeline = null;
 
         public MainWindow() {
             // window settings
@@ -58,22 +60,30 @@ namespace ScreenRec {
             var video_src = new ScreenRecorderBin(); 
             var audio_src = new AudioRecorderBin();
 
-            var video_encoder = new VideoEncoderBin();
+            video_encoder = new VideoEncoderBin();
             var audio_encoder = new AudioEncoderBin();
             this.muxer = new MuxerBin("mpegts");
 
-            this.pipeline = new Gst.Pipeline("record");
-            this.pipeline.add(video_src);
+            stderr.printf("Recording pipeline:\n");
+            this.record_pipeline = new Gst.Pipeline("record");
+            this.record_pipeline.add(video_src);
+            dump_pipeline(this.record_pipeline);
+
+            stderr.printf("Encoding pipeline:\n");
+            this.pipeline = new Gst.Pipeline("encode");
+
             this.pipeline.add(audio_src);
             this.pipeline.add(video_encoder);
             this.pipeline.add(audio_encoder);
             this.pipeline.add(this.muxer);
 
-            video_src.link(video_encoder);
             audio_src.link(audio_encoder);
             this.muxer.multi_link(audio_encoder, video_encoder);
+            // this.muxer.multi_link(null, video_encoder);
 
             dump_pipeline(this.pipeline);
+
+            video_encoder.connect_to_source(video_src);
         }
 
         private void on_record(Button button) {
@@ -84,19 +94,22 @@ namespace ScreenRec {
 
             Gst.State state;
             Gst.State pending;
-            this.pipeline.get_state(out state, out pending, 0);
+            this.record_pipeline.get_state(out state, out pending, 0);
 
             // set the record button to display the correct symbol
             var icon_name = "media-record";
             if (state == Gst.State.PLAYING) {
-                var eos = new Gst.Event.eos();
-                this.pipeline.send_event(eos);
-                //this.pipeline.set_state(Gst.State.NULL);
+                this.record_pipeline.set_state(Gst.State.NULL);
+
+                video_encoder.shutdown_with_eos();
+                this.pipeline.send_event(new Gst.Event.eos());
+                this.pipeline = null;
             } else {
                 icon_name = "media-playback-stop-symbolic";
                 var path = "/home/dark/Capture/output.ts";
                 this.muxer.set_destination(path);
                 this.pipeline.set_state(Gst.State.PLAYING);
+                this.record_pipeline.set_state(Gst.State.PLAYING);
             }
 
             // update button icon
