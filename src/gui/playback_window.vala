@@ -5,7 +5,7 @@ using Gst;
 
 namespace ScreenRec {
 
-    class PlaybackWindow: Gtk.Window {
+    class PlaybackWindow: Gtk.Window, ManualVideoRoutingSrc {
         private ButtonConfig _config;
         public virtual ButtonConfig config {
             get {
@@ -17,19 +17,27 @@ namespace ScreenRec {
         }
 
         private Button zoom_button;
-        private DrawingArea video_area;
+        private Button exclusive_button;
         private ulong sync_handler;
         private ulong message_handler;
+        protected MainWindow main_window;
 
         private uint* xid;
 
+        protected DrawingArea video_area;
         protected HeaderBar header;
         protected Gst.Bus? bus;
         protected Pipeline? pipeline;
         protected bool auto_start = true;
+        protected bool zoomed = false;
+        protected Gst.App.Sink appsink;
+        protected Gst.Element tee;
 
-        public PlaybackWindow(ButtonConfig config) {
+        private ManualVideoRoutingSink? sink;
+
+        public PlaybackWindow(ButtonConfig config, MainWindow main_window) {
             this.config = config;
+            this.main_window = main_window;
 
             // window settings
             this.title = config.title;
@@ -51,6 +59,18 @@ namespace ScreenRec {
             zoom_button.image = image;
             zoom_button.clicked.connect(on_zoom);
             header.pack_end(zoom_button);
+
+            // Exclusive Button
+            exclusive_button = new Button();
+            exclusive_button.label = "Exclusive";
+            exclusive_button.clicked.connect(on_exclusive);
+            header.pack_end(exclusive_button);
+
+            // Debug Button
+            var debug_button = new Button();
+            debug_button.label = "Debug";
+            debug_button.clicked.connect(on_debug);
+            header.pack_end(debug_button);
 
             // Video area
             video_area = new Gtk.DrawingArea();
@@ -152,6 +172,47 @@ namespace ScreenRec {
                     this.pipeline.set_state(Gst.State.NULL);
                 }
             }
+        }
+
+        protected virtual void on_debug(Button source) {
+            dump_pipeline(this.pipeline);
+        }
+
+        private void on_exclusive(Button source) {
+            if (main_window.video_encoder != null) {
+                main_window.video_encoder.connect_to_source(this);
+            }
+        }
+
+        protected FlowReturn new_preroll() {
+            appsink.pull_preroll();
+            return FlowReturn.OK;
+        }
+
+        protected FlowReturn new_sample() {
+            var sample = appsink.pull_sample();
+
+            if (this.sink != null) {
+                if (sample != null) {
+                    var result = this.sink.consume_sample(sample);
+                    if (result == false) {
+                        this.stop_emitting_buffers();
+                    }
+                }
+            }
+
+            if (appsink.eos) {
+                stderr.printf("End of stream in screen recorder\n");
+            }
+            return FlowReturn.OK;
+        }
+
+        public void start_emitting_buffers(ManualVideoRoutingSink sink) {
+            this.sink = sink;
+        }
+
+        public void stop_emitting_buffers() {
+            this.sink = null;
         }
 
         protected virtual void on_zoom(Button source) {

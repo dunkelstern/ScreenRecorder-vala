@@ -19,9 +19,10 @@ namespace ScreenRec {
         private Button settings_button;
         private Button focus_button;
         private Gst.Element scaler_object;
+        private Gst.Element pre_scaler_object;
 
-        public V4l2Window(V4l2ButtonConfig config) {
-            base(config);
+        public V4l2Window(V4l2ButtonConfig config, MainWindow main_window) {
+            base(config, main_window);
 
             // button to open v4l2 configuration panel
             settings_button = new Gtk.Button();
@@ -99,54 +100,84 @@ namespace ScreenRec {
                 src.add_pad(ghost_src);
             }
 
+            // tee to exclusively record
+
+            tee = Gst.ElementFactory.make("tee", "tee");
+
+            var template = new Gst.PadTemplate("src_%u", PadDirection.SRC, PadPresence.REQUEST, new Caps.any());
+            var tee_src1 = tee.request_pad(template, null, null);
+            var tee_src2 = tee.request_pad(template, null, null);
+
+            appsink = Gst.ElementFactory.make("appsink", "appsink") as Gst.App.Sink;
+            appsink.new_preroll.connect(new_preroll);
+            appsink.new_sample.connect(new_sample);
+            appsink.drop = true;
+            appsink.emit_signals = true;
+
             // scaler
             var scaler = new Gst.Bin("scaler");
+            Element videoscale;
             if (this._config.hwaccel == "vaapi") {
                 // hardware accelerated scaler
-                this.scaler_object = Gst.ElementFactory.make("vaapipostproc", "scaler");
-                this.scaler_object.set("width", this._config.width / 2);
-                this.scaler_object.set("height", this._config.height / 2);
-                this.scaler_object.set("scale-method", 2);
-                scaler.add(this.scaler_object);
-
-                var ghost_sink = new Gst.GhostPad("sink", this.scaler_object.get_static_pad("sink"));
-                var ghost_src = new Gst.GhostPad("src", this.scaler_object.get_static_pad("src"));
-                scaler.add_pad(ghost_sink);
-                scaler.add_pad(ghost_src);
+                videoscale = Gst.ElementFactory.make("vaapipostproc", "scaler");
+                videoscale.set("scale-method", 2);
             } else {
                 // software scaling
-                var videoscale = Gst.ElementFactory.make("videoscale", "scaler");
-                scaler.add(videoscale);
-
-                var scale_cap_string_builder = new StringBuilder("");
-                scale_cap_string_builder.printf(
-                    "video/x-raw,width=%d,height=%d",
-                    (int)this._config.width,
-                    (int)this._config.height
-                );
-                var scale_caps = Gst.Caps.from_string(scale_cap_string_builder.str);
-                this.scaler_object = Gst.ElementFactory.make("capsfilter", "scaler_filter");
-                this.scaler_object.set("caps", scale_caps);
-                scaler.add(this.scaler_object);
-
-                videoscale.link(this.scaler_object);
-
-                var ghost_sink = new Gst.GhostPad("sink", videoscale.get_static_pad("sink"));
-                var ghost_src = new Gst.GhostPad("src", this.scaler_object.get_static_pad("src"));
-                scaler.add_pad(ghost_sink);
-                scaler.add_pad(ghost_src);
+                videoscale = Gst.ElementFactory.make("videoscale", "scaler");
             }
+            scaler.add(videoscale);
+            this.pre_scaler_object = videoscale;
+
+            var scale_cap_string_builder = new StringBuilder("");
+            scale_cap_string_builder.printf(
+                "video/x-raw,width=%d,height=%d",
+                (int)this._config.width/2,
+                (int)this._config.height/2
+            );
+            var scale_caps = Gst.Caps.from_string(scale_cap_string_builder.str);
+            this.scaler_object = Gst.ElementFactory.make("capsfilter", "scaler_filter");
+            this.scaler_object.set("caps", scale_caps);
+            scaler.add(this.scaler_object);
+
+            videoscale.link(this.scaler_object);
+
+            var ghost_sink = new Gst.GhostPad("sink", videoscale.get_static_pad("sink"));
+            var ghost_src = new Gst.GhostPad("src", this.scaler_object.get_static_pad("src"));
+            scaler.add_pad(ghost_sink);
+            scaler.add_pad(ghost_src);
 
             // output stage
             var sink = new PlaybackBin(this._config.hwaccel, false);
 
+            var tee_queue1 = Gst.ElementFactory.make("queue", "tee_queue1");
+            var tee_queue2 = Gst.ElementFactory.make("queue", "tee_queue2");
+
+            var convert = Gst.ElementFactory.make("autovideoconvert", "encoder_convert");
+            var record_caps = Gst.ElementFactory.make("capsfilter", "encoder_capsfilter");
+            record_caps.set("caps", main_window.video_encoder.get_input_caps());
+
             // assemble pipeline
             this.pipeline = new Gst.Pipeline("playback");
             this.pipeline.add(src);
+            this.pipeline.add(tee);
+            this.pipeline.add(tee_queue1);
+            this.pipeline.add(tee_queue2);
+            this.pipeline.add(convert);
+            this.pipeline.add(record_caps);
+            this.pipeline.add(appsink);
             this.pipeline.add(scaler);
             this.pipeline.add(sink);
-            src.link(scaler);
+            src.link(tee);
+            tee_src1.link(tee_queue1.get_static_pad("sink"));
+            tee_src2.link(tee_queue2.get_static_pad("sink"));
+            tee_queue1.link(scaler);
+            tee_queue2.link(convert);
+            convert.link(record_caps);
+            record_caps.link(appsink);
             scaler.link(sink);
+
+            stderr.puts("V4l2 Pipeline:");
+            dump_pipeline(this.pipeline);
         }
 
         protected override void stop() {
@@ -197,6 +228,44 @@ namespace ScreenRec {
                     }
                 }
             }
+        }
+
+        protected override void on_zoom(Button source) {
+            this.zoomed = !this.zoomed;
+            var pad = this.pre_scaler_object.get_static_pad("src");
+            pad.add_probe(PadProbeType.BLOCK_DOWNSTREAM, this.block_input);
+        }
+
+        private PadProbeReturn block_input(Pad pad, PadProbeInfo info) {
+            pad.remove_probe(info.id);
+
+            // change scale
+            int divisor;
+            if (this.zoomed) {
+                divisor = 1;
+            } else {
+                divisor = 2;
+            }
+
+            int width = (int)this._config.width / divisor;
+            int height = (int)this._config.height / divisor;
+
+            stderr.printf("On Zoom, %d, %d\n", width, height);
+
+            var scale_cap_string_builder = new StringBuilder("");
+            scale_cap_string_builder.printf(
+                "video/x-raw,width=%d,height=%d",
+                width,
+                height
+            );
+            var scale_caps = Gst.Caps.from_string(scale_cap_string_builder.str);
+            this.scaler_object.set("caps", scale_caps);
+
+            this.video_area.set_size_request(width, height);
+            this.set_default_size(width, height);
+            this.resize(width, height);
+
+            return PadProbeReturn.OK;
         }
     }
 }

@@ -11,7 +11,8 @@ namespace ScreenRec {
         private PlaybackWindow[] windows = {};
 
         private MuxerBin muxer;
-        private VideoEncoderBin video_encoder;
+        public VideoEncoderBin? video_encoder;
+        public ScreenRecorderBin? screenrecorder;
         private Gst.Pipeline? pipeline = null;
         private Gst.Pipeline? record_pipeline = null;
 
@@ -45,6 +46,12 @@ namespace ScreenRec {
             config_button.clicked.connect(on_config);
             header.pack_end(config_button);
 
+            // Debug Button
+            var debug_button = new Button();
+            debug_button.label = "Debug";
+            debug_button.clicked.connect(on_debug);
+            header.pack_end(debug_button);
+
             // Button box
             button_box = new Box(Gtk.Orientation.VERTICAL, 10);
             this.add(button_box);
@@ -52,24 +59,23 @@ namespace ScreenRec {
             // Fill button box
             build_source_buttons(button_box);
 
+            this.create_recorder();
+
             // show the lot
             this.show_all();
         }
 
         private void create_recorder() {
-            var video_src = new ScreenRecorderBin(); 
-            var audio_src = new AudioRecorderBin();
-
             video_encoder = new VideoEncoderBin();
             var audio_encoder = new AudioEncoderBin();
             this.muxer = new MuxerBin("mpegts");
 
-            stderr.printf("Recording pipeline:\n");
-            this.record_pipeline = new Gst.Pipeline("record");
-            this.record_pipeline.add(video_src);
-            dump_pipeline(this.record_pipeline);
+            screenrecorder = new ScreenRecorderBin(video_encoder); 
+            var audio_src = new AudioRecorderBin();
 
-            stderr.printf("Encoding pipeline:\n");
+            this.record_pipeline = new Gst.Pipeline("record");
+            this.record_pipeline.add(screenrecorder);
+
             this.pipeline = new Gst.Pipeline("encode");
 
             this.pipeline.add(audio_src);
@@ -81,16 +87,14 @@ namespace ScreenRec {
             this.muxer.multi_link(audio_encoder, video_encoder);
             // this.muxer.multi_link(null, video_encoder);
 
-            dump_pipeline(this.pipeline);
-
-            video_encoder.connect_to_source(video_src);
+            video_encoder.connect_to_source(screenrecorder);
         }
 
         private void on_record(Button button) {
-            if (this.pipeline == null) {
-                // create recorder if not existing
-                this.create_recorder();
-            }
+            // if (this.pipeline == null) {
+            //     // create recorder if not existing
+            //     this.create_recorder();
+            // }
 
             Gst.State state;
             Gst.State pending;
@@ -104,6 +108,7 @@ namespace ScreenRec {
                 video_encoder.shutdown_with_eos();
                 this.pipeline.send_event(new Gst.Event.eos());
                 this.pipeline = null;
+                this.create_recorder();
             } else {
                 icon_name = "media-playback-stop-symbolic";
                 var path = "/home/dark/Capture/output.ts";
@@ -120,6 +125,14 @@ namespace ScreenRec {
 
         private void on_config(Button button) {
             var settings = new SettingsWindow(this);
+        }
+
+        private void on_debug(Button source) {
+            stderr.puts("Encoding pipeline:");
+            dump_pipeline(this.pipeline);
+
+            stderr.puts("Screenrec pipeline:");
+            dump_pipeline(this.record_pipeline);
         }
 
         public void update_callback() {
@@ -156,19 +169,19 @@ namespace ScreenRec {
             // run the correct playback window
             switch(slot.button_type) {
                 case ButtonType.VIDEO4LINUX:
-                    var window = new V4l2Window(slot as V4l2ButtonConfig);
+                    var window = new V4l2Window(slot as V4l2ButtonConfig, this);
                     this.windows += window;
                     break;
                 case ButtonType.VIDEO_PLAYER:
-                    var window = new PlayerWindow(slot as PlayerButtonConfig);
+                    var window = new PlayerWindow(slot as PlayerButtonConfig, this);
                     this.windows += window;
                     break;
                 case ButtonType.MJPEG_PIPE:
-                    var window = new MjpegWindow(slot as MjpegButtonConfig);
+                    var window = new MjpegWindow(slot as MjpegButtonConfig, this);
                     this.windows += window;
                     break;
                 case ButtonType.RTMP_STREAM:
-                    var window = new RtmpWindow(slot as RtmpButtonConfig);
+                    var window = new RtmpWindow(slot as RtmpButtonConfig, this);
                     this.windows += window;
                     break;
                 default:

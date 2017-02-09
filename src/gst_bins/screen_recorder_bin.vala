@@ -10,12 +10,10 @@ namespace ScreenRec {
         private Gst.Element video_src;
         private Gst.App.Sink appsink;
         private ManualVideoRoutingSink? sink;
-        private bool caps_set;
 
-        public ScreenRecorderBin() {
+        public ScreenRecorderBin(VideoEncoderBin encoder) {
             GLib.Object(name: "screen_recorder_src");
             this.sink = null;
-            this.caps_set = false;
 
             var config = ConfigFile.instance().rec_settings;
 
@@ -30,12 +28,22 @@ namespace ScreenRec {
 
             this.add(video_src);
 
+            var convert = Gst.ElementFactory.make("autovideoconvert", "encoder_convert");
+            var record_caps = Gst.ElementFactory.make("capsfilter", "encoder_capsfilter");
+            record_caps.set("caps", encoder.get_input_caps());
+            this.add(convert);
+            this.add(record_caps);
+
             appsink = Gst.ElementFactory.make("appsink", "appsink") as Gst.App.Sink;
             appsink.new_preroll.connect(new_preroll);
             appsink.new_sample.connect(new_sample);
-
             this.add(appsink);
-            video_src.link(appsink);
+
+            video_src.link(convert);
+            convert.link(record_caps);
+            record_caps.link(appsink);
+
+            appsink.set_emit_signals(true);
 
             // no usual src as we're using appsink
 
@@ -50,24 +58,14 @@ namespace ScreenRec {
         }
 
         private FlowReturn new_sample() {
+            stderr.printf("New sample from Screen Recorder\n");
+
             var sample = appsink.pull_sample();
             if (this.sink != null) {
                 if (sample != null) {
-                    if (!this.caps_set) {
-                        var pad = video_src.get_static_pad("src");
-                        var caps = pad.get_current_caps();
-                        this.appsink.set_caps(caps);
-                        this.sink.set_input_caps(caps);
-                        this.caps_set = true;
-                    }
-
-                    this.sink.consume_sample(sample);
-
-                    Gst.State st = Gst.State.NULL;
-                    Gst.State pend = Gst.State.NULL;
-                    this.sink.get_state(out st, out pend, 0);
-                    if (st != Gst.State.PLAYING) {
-                        stderr.printf("Sink consumed sample, status = %s, pending = %s\n", st.to_string(), pend.to_string());
+                    var result = this.sink.consume_sample(sample);
+                    if (result == false) {
+                        this.stop_emitting_buffers();
                     }
                 }
             }
@@ -80,12 +78,9 @@ namespace ScreenRec {
 
         public void start_emitting_buffers(ManualVideoRoutingSink sink) {
             this.sink = sink;
-            this.caps_set = false;
-            appsink.set_emit_signals(true);
         }
 
         public void stop_emitting_buffers() {
-            appsink.set_emit_signals(false);
             this.sink = null;
         }
     }

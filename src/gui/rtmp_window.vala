@@ -22,8 +22,8 @@ namespace ScreenRec {
         private Gst.Element sink;
         private Gst.Element fake_sink;
 
-        public RtmpWindow(RtmpButtonConfig config) {
-            base(config);
+        public RtmpWindow(RtmpButtonConfig config, MainWindow main_window) {
+            base(config, main_window);
             this.auto_start = true;
             build_pipeline();
             this.setup((int)config.max_width / 2, (int)config.max_height / 2, true);

@@ -20,8 +20,8 @@ namespace ScreenRec {
         private Gst.Element pipesrc;
         private Pid subprocess;
 
-        public MjpegWindow(MjpegButtonConfig config) {
-            base(config);
+        public MjpegWindow(MjpegButtonConfig config, MainWindow main_window) {
+            base(config, main_window);
             build_pipeline();
             this.setup((int)config.width / 2, (int)config.height / 2, true);
         }

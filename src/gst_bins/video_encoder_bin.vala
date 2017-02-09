@@ -28,7 +28,7 @@ namespace ScreenRec {
             appsrc.set_property("is-live", true);
             appsrc.set_property("do-timestamp", true);
             appsrc.set_max_bytes(1920*1080*4*4*2); // 2 4K RGBx frames                
-
+            appsrc.set_caps(this.get_input_caps());
             this.add(appsrc);
 
             // scaler/encoder part of pipeline
@@ -135,19 +135,41 @@ namespace ScreenRec {
             this.add_pad(ghost_src);
         }
 
-        public void consume_sample(Sample buffer) {
+        public bool consume_sample(Sample buffer) {
             var result = this.appsrc.push_sample(buffer);
             if (result != FlowReturn.OK) {
                 stderr.printf("Failed to push sample into video encoder, result = %s\n", result.to_string());
+                return false;
             }
+            return true;
         }
 
         public void shutdown_with_eos() {
             this.appsrc.end_of_stream();
         }
 
-        public void set_input_caps(Caps caps) {
-            this.appsrc.set_property("caps", caps);
+        public Caps get_input_caps() {
+            var config = ConfigFile.instance().rec_settings;
+            var scale_width = config.scale_width;
+            var scale_height = config.scale_height;
+            if (scale_width == 0) {
+                scale_width = config.width;
+            }
+            if (scale_height == 0) {
+                scale_height = config.height;
+            }
+
+            var cap_string_builder = new StringBuilder("");
+            cap_string_builder.printf(
+                "video/x-raw,format=I420,width=%d,height=%d,framerate=%d/1",
+                (int)scale_width,
+                (int)scale_height,
+                (int)config.fps
+            );
+            var caps = Gst.Caps.from_string(cap_string_builder.str);
+
+            stderr.printf("input caps: %s\n", caps.to_string());
+            return caps;
         }
 
         public void connect_to_source(ManualVideoRoutingSrc src) {

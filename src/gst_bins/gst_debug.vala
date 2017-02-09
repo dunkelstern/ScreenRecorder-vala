@@ -6,6 +6,10 @@ public void dump_pipeline(Gst.Bin pipeline, int indent = 0) {
         indent_str = indent_str + "    ";
     }
 
+    if (indent == 0) {
+        stderr.puts("----------------------------------------------\n");
+    }
+
     stderr.puts("\n");
 
     var iterator = pipeline.iterate_sorted();

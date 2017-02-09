@@ -19,8 +19,8 @@ namespace ScreenRec {
         private Button play_button;
         private Scale seek_bar;
 
-        public PlayerWindow(PlayerButtonConfig config) {
-            base(config);
+        public PlayerWindow(PlayerButtonConfig config, MainWindow main_window) {
+            base(config, main_window);
             this.auto_start = _config.auto_play;
             var icon_name = "media-playback-start-symbolic";
             if (auto_start) {
